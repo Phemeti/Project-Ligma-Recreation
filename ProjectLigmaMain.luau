@@ -1,10 +1,51 @@
 --!optimize 2
---!nonstrict
 setfpscap(240)
 repeat task.wait() setfpscap(math.huge) until game:IsLoaded()
 
+local LigmaUIVersion
+if not isfolder('ligma') then
+    makefolder('ligma')
+end
+
+local verdata = game:HttpGet('https://raw.githubusercontent.com/Phemeti/Project-Ligma-Recreation/refs/heads/main/info/version.txt')
+
+if not isfile('ligma/version.txt') then
+    writefile('ligma/version.txt', verdata)
+elseif isfile('ligma/version.txt') and readfile('ligma/version.txt') ~= verdata then
+    writefile('ligma/version.txt', verdata)
+end
+
+if hookfunction then
+    if identifyexecutor and ({identifyexecutor()})[1] ~= 'Project Ligma' then
+        hookfunction(getgenv().identifyexecutor, function()
+            return 'Project Ligma', LigmaUIVersion
+        end)
+    elseif getexecutorname and getexecutorname() ~= 'Project Ligma' then
+        hookfunction(getgenv().getexecutorname, function()
+            return 'Project Ligma'
+        end)
+    end
+else
+    if identifyexecutor and ({identifyexecutor()})[1] ~= 'Project Ligma' then
+        getgenv().identifyexecutor = function()
+            return 'Project Ligma', LigmaUIVersion
+        end
+    elseif getexecutorname and getexecutorname() ~= 'Project Ligma' then
+        getgenv().getexecutorname = function()
+            return 'Project Ligma'
+        end
+    end
+end    
+
+local Whitelist = {
+    ['6monthbanomg'] = true
+}
+
 local __DEBUG = true
 local ALLOW_I_DONT_WANT_THESE_PEOPLE_TO_HAVE__DEBUG = false
+local I_DONT_WANT_THESE_PEOPLE_TO_HAVE__DEBUG = {
+    ['6monthbanomg'] = true
+}
 
 local playersService = game:GetService('Players')
 local coreGui = game:GetService('CoreGui')
@@ -12,27 +53,63 @@ local tweenService = game:GetService('TweenService')
 local http = game:GetService('HttpService')
 local soundService = game:GetService('SoundService')
 local UIS = game:GetService("UserInputService")
+local chatservice = game:GetService("TextChatService")
 local runservice = game:GetService('RunService')
+local rbxreplicatedstorage = game:GetService('RobloxReplicatedStorage')
+
+local function draggable(Frame)
+    Frame.Active = true
+    Frame.Draggable = true
+    -- code is sloppy anyway
+    --[[dragToggle = nil
+    local dragSpeed = 0
+    dragInput = nil
+    dragStart = nil
+    local dragPos = nil
+    function updateInput(input)
+        local Delta = input.Position - dragStart
+        local Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + Delta.X, startPos.Y.Scale, startPos.Y.Offset + Delta.Y)
+        Frame.Position = Position
+    end
+    Frame.InputBegan:Connect(function(input)
+        if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and UIS:GetFocusedTextBox() == nil then
+            dragToggle = true
+            dragStart = input.Position
+            startPos = Frame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragToggle = false
+                end
+            end)
+        end
+    end)
+    Frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if input == dragInput and dragToggle then
+            updateInput(input)
+        end
+    end)]]
+end
 
 -- Exploit Functions
 local ExploitFunctions = {
     filetype = function(file)
         return ((isfile(file) and 'file') or (isfolder(file) and 'folder')) or nil
-    end,
-    
+    end
 }
 
 for name, func in ExploitFunctions do
-    getrenv()[name] = func
+    getgenv()[name] = func
 end
 
 local player = playersService.LocalPlayer
 
 local Ligma = {}
 
-local I_DONT_WANT_THESE_PEOPLE_TO_HAVE__DEBUG = {
-    ['6monthbanomg'] = true
-}
 if ALLOW_I_DONT_WANT_THESE_PEOPLE_TO_HAVE__DEBUG then
     if I_DONT_WANT_THESE_PEOPLE_TO_HAVE__DEBUG[player.Name] then
         __DEBUG = false
@@ -55,12 +132,55 @@ Maid.AddCleanup = function(self, obj)
     return obj
 end
 
--- my bad i dont fucking know how to make shit config systems
-if not isfolder('ligma') then
-    makefolder('ligma')
+local function check(plr)
+    if Whitelist[plr.Name] then
+        local whisper = rbxreplicatedstorage.ExperienceChat.WhisperChat:InvokeServer(plr.UserId)
+        
+        if whisper then
+            local old = chatservice.OnIncomingMessage
+            
+            chatservice.OnIncomingMessage = function(message)
+                local props = Instance.new("TextChatMessageProperties")
+
+                if message.TextSource then
+                    local target = playersService:GetPlayerByUserId(message.TextSource.UserId)
+                    if enabled and target == player then
+                        return nil
+                    end
+                end
+                
+                return props    
+            end
+            
+            whisper:SendAsync('iamusingproject')
+            task.wait(0.05)
+            chatservice.OnIncomingMessage = old
+            old = nil
+        end
+    end
 end
+
+for _, v in playersService:GetPlayers() do
+    if v ~= player then
+        check(v)
+    end
+end
+
+Maid:AddCleanup(playersService.PlayerAdded:Connect(function(v)
+    if v ~= player then
+        check(v)
+    end
+end))
+
+-- my bad i dont fucking know how to make shit config systems
+--if not isfolder('ligma') then
+    --makefolder('ligma')
+--end
 if not isfolder('ligma/config') then
     makefolder('ligma/config')
+end
+if not isfolder('ligma/.cache') then
+    makefolder('ligma/.cache')
 end
 
 Ligma.AddConfig = function(self, name, setval)
@@ -82,7 +202,8 @@ end
 local Config = {
     Keybind = Ligma:AddConfig('Keybind', 'Z'),
     PS4Logo = Ligma:AddConfig('PS4Logo', 'true'),
-    FPSCounter = Ligma:AddConfig('FPSCounter', 'true')
+    FPSCounter = Ligma:AddConfig('FPSCounter', 'true'),
+    IgnoreScriptwarning = Ligma:AddConfig('IgnoreScriptWarning', 'false')
 }
 
 local function toBool(v)
@@ -167,11 +288,11 @@ local hoversound = Ligma:AddSound({
 local function AddSounds(obj)
     obj.MouseButton1Down:Connect(function()
         opensound:Play()
-        gui.Visible = false
+        --gui.Visible = false
     end)
     obj.MouseEnter:Connect(function()
         hoversound:Play()
-        gui.Visible = false
+        --gui.Visible = false
     end)
 end
 
@@ -190,7 +311,6 @@ Main.Size = UDim2.new(0, 540, 0, 310)
 Main.Position = UDim2.new(0.5, -270, 0.5, -155)
 Main.BackgroundColor3 = Color3.fromRGB(240,240,240)
 Main.BorderColor3 = Color3.fromRGB(120,120,120)
-Main.Active = true
 Main.Visible = false
 
 shared.PS4Logo = nil
@@ -238,7 +358,7 @@ if not __DEBUG then
                 ),
                 {
                     AnchorPoint = Vector2.new(0, 1),
-                    Position = UDim2.new(0, 0, 1, 0),
+                    Position = UDim2.new(0, 30, 1, -30),
                     Rotation = -360,
                     Size = UDim2.new(0, 150, 0, 150)
                 }
@@ -285,7 +405,7 @@ else
     icon.ImageTransparency = 0
     icon.Size = UDim2.new(0, 150, 0, 150)
     icon.AnchorPoint = Vector2.new(0, 1)
-    icon.Position = UDim2.new(0, 0, 1, 0)
+    icon.Position = UDim2.new(0, 30, 1, -30)
     icon.Image = 'rbxassetid://87162794'
     icon.Parent = ScreenGui
     icon.ZIndex = 9e9
@@ -707,11 +827,11 @@ end)
 
 local SidePanel = Instance.new("ScrollingFrame")
 SidePanel.Parent = Main
-SidePanel.Size = UDim2.new(0,60,0,255)
-SidePanel.Position = UDim2.new(0,380,0,24)
-SidePanel.BackgroundColor3 = Color3.fromRGB(211,211,211)
+SidePanel.Size = UDim2.new(0,70,0,255)
+SidePanel.Position = UDim2.new(0,360,0,24)
+SidePanel.BackgroundColor3 = Color3.fromRGB(188,188,188)
 SidePanel.BorderColor3 = Color3.fromRGB(150,150,150)
-SidePanel.ScrollBarThickness = 0
+SidePanel.ScrollBarThickness = 6
 SidePanel.ScrollingDirection = Enum.ScrollingDirection.Y
 SidePanel.CanvasSize = UDim2.new(0,0,0,0)
 
@@ -737,7 +857,7 @@ local function AddSideButton(text, fontSize)
     local btn = Instance.new("TextButton")
     btn.Parent = SidePanel
     btn.Size = UDim2.new(1,0,0,75)
-    btn.Text = text
+    btn.Text = text..'  '
     btn.BackgroundColor3 = Color3.fromRGB(245,245,245)
     btn.BorderColor3 = Color3.fromRGB(150,150,150)
     btn.TextColor3 = Color3.fromRGB(0,0,0)
@@ -993,10 +1113,10 @@ local RightPanel = Instance.new("ScrollingFrame")
 local PANELIST = Instance.new("UIListLayout")
 PANELIST.Parent = RightPanel
 RightPanel.Parent = Main
-RightPanel.ScrollBarThickness = 0
+RightPanel.ScrollBarThickness = 5
 RightPanel.Size = UDim2.new(0,90,0,255)
 RightPanel.Position = UDim2.new(0,445,0,24)
-RightPanel.BackgroundColor3 = Color3.fromRGB(245,245,245)
+RightPanel.BackgroundColor3 = Color3.fromRGB(177,177,177)
 RightPanel.BorderColor3 = Color3.fromRGB(150,150,150)
 
 local function AddFile(name, script)
@@ -1004,7 +1124,7 @@ local function AddFile(name, script)
     thing.Parent = RightPanel
     thing.Size = UDim2.new(1,0,0,20)
     thing.Position = UDim2.new(0,0,0,66)
-    thing.Text = tostring(name)
+    thing.Text = tostring(name)..' '
     thing.BackgroundColor3 = Color3.fromRGB(245,245,245)
     thing.BorderSizePixel = 0.7
     thing.TextColor3 = Color3.fromRGB(0,0,0)
@@ -1242,12 +1362,12 @@ SETTINGS.Parent = ScreenGui
 SETTINGS.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 SETTINGS.BorderColor3 = Color3.fromRGB(158, 158, 158)
 SETTINGS.ClipsDescendants = true
-SETTINGS.Active = true
-SETTINGS.Draggable = true
 SETTINGS.Visible = false
 SETTINGS.AnchorPoint = Vector2.new(0.5, 0.5)
 SETTINGS.Position = UDim2.new(0.5, 0, 0.5, 0)
 SETTINGS.Size = UDim2.new(0, 347, 0, 257)
+
+draggable(SETTINGS)
 
 addClose(SETTINGS)
 
@@ -1364,6 +1484,7 @@ local function createtoggle(name, default, callback)
         end
     }
 end
+
 local function toBool(v)
     return v == true or v == "true"
 end
@@ -1456,6 +1577,13 @@ fpscounter = createtoggle('FPS Counter', toBool(readfile('ligma/config/FPSCounte
     Config.FPSCounter:SetValue(state and 'true' or 'false')
     showFPS = readfile('ligma/config/FPSCounter') == 'true' and true or false
 end)
+
+local ignorescriptwarning
+ignorescriptwarning = createtoggle('Ignore Script Warning', toBool(readfile('ligma/config/IgnoreScriptwarning')), function()
+    local state = ignorescriptwarning:GetValue()
+    Config.IgnoreScriptwarning:SetValue(state and 'true' or 'false')
+end)
+
 shared.PS4Logo.Visible = toBool(readfile('ligma/config/PS4Logo'))
 --https://discord.gg/uGtE5D6gmX
 do
@@ -1464,8 +1592,6 @@ do
     local Scroller = Instance.new("ScrollingFrame")
     local TextLabel_2 = Instance.new("TextLabel")
 
-    Frame.Draggable = true
-    Frame.Active = true
     Frame.Parent = ScreenGui
     Frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     Frame.BorderColor3 = Color3.fromRGB(175, 175, 175)
@@ -1474,6 +1600,7 @@ do
     Frame.Position = UDim2.new(0.5, 0, 0.5, 0)
     Frame.Size = UDim2.new(0, 418, 0, 290)
 
+    draggable(Frame)
     addClose(Frame)
 
     TextLabel.Parent = Frame
@@ -1594,6 +1721,8 @@ do
         0,
         282.5
     )
+    -- Js's Duels on top son
+    --  - PMR
     Info.Size = UDim2.new(0, 25, 0, 25)
     Info.Image = "rbxassetid://4562954602"
     Info.ImageColor3 = Color3.fromRGB(0, 0, 0)
@@ -1604,3 +1733,476 @@ do
         Frame.Visible = not Frame.Visible
     end)
 end
+
+do -- Hub GUI
+    local Hub = AddSideButton("HUB", 11)
+
+    local Frame = Instance.new("Frame")
+    local TextLabel = Instance.new("TextLabel")
+    local Objects = Instance.new("ScrollingFrame")
+    local UIListLayout = Instance.new("UIListLayout")
+    local UIPadding = Instance.new("UIPadding")
+    local TextBox = Instance.new("TextBox")
+    local UICorner = Instance.new("UICorner")
+    local UIPadding_2 = Instance.new("UIPadding")
+
+    shared.HubFrame = Frame
+    
+    Frame.Parent = ScreenGui
+    Frame.Visible = false
+    Frame.AnchorPoint = Vector2.new(0.5, 0.5)
+    Frame.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+    Frame.BorderColor3 = Color3.fromRGB(175, 175, 175)
+    Frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    Frame.Size = UDim2.new(0, 562, 0, 291)
+
+    addClose(Frame)
+    
+    TextLabel.Parent = Frame
+    TextLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    TextLabel.BackgroundTransparency = 1.000
+    TextLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    TextLabel.BorderSizePixel = 0
+    TextLabel.Position = UDim2.new(0.349111974, 0, 0.0306642931, 0)
+    TextLabel.Size = UDim2.new(0, 170, 0, 21)
+    TextLabel.Font = Enum.Font.Arial
+    TextLabel.Text = "Hub"
+    TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TextLabel.TextScaled = true
+    TextLabel.TextSize = 14.000
+    TextLabel.TextWrapped = true
+    
+    Objects.Name = "Objects"
+    Objects.Parent = Frame
+    Objects.Active = true
+    Objects.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Objects.BackgroundTransparency = 1.000
+    Objects.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    Objects.BorderSizePixel = 0
+    Objects.Position = UDim2.new(0.0180000495, 0, 0.256387204, 0)
+    Objects.Size = UDim2.new(0, 544, 0, 209)
+    Objects.ScrollBarThickness = 10    
+    
+    UIListLayout.Parent = Objects
+    UIListLayout.FillDirection = Enum.FillDirection.Horizontal
+    UIListLayout.Padding = UDim.new(0, 15)
+
+    local function UpdateCanvas()
+        Objects.CanvasSize = UDim2.new(
+            0,
+            UIListLayout.AbsoluteContentSize.X + 20,
+            0,
+            0
+        )
+    end
+    UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(UpdateCanvas)
+    UpdateCanvas()
+    
+    UIPadding.Parent = Objects
+    UIPadding.PaddingBottom = UDim.new(0, 1)
+    UIPadding.PaddingLeft = UDim.new(0, 1)
+    UIPadding.PaddingRight = UDim.new(0, 1)
+    UIPadding.PaddingTop = UDim.new(0, 1)
+    
+    TextBox.Parent = Frame
+    TextBox.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    TextBox.BackgroundTransparency = 0.500
+    TextBox.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    TextBox.BorderSizePixel = 0
+    TextBox.Position = UDim2.new(0.0177935939, 0, 0.126884222, 0)
+    TextBox.Size = UDim2.new(0, 397, 0, 32)
+    TextBox.ClearTextOnFocus = false
+    TextBox.Font = Enum.Font.Arial
+    TextBox.PlaceholderText = "Search..."
+    TextBox.Text = ""
+    TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TextBox.TextScaled = true
+    TextBox.TextSize = 14.000
+    TextBox.TextWrapped = true
+
+    local Fetch = Instance.new("TextButton")
+
+    Fetch.Name = "Fetch"
+    Fetch.Parent = Frame
+    Fetch.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Fetch.BorderColor3 = Color3.fromRGB(147, 147, 147)
+    Fetch.Position = UDim2.new(0.740213513, 0, 0.12371134, 0)
+    Fetch.Size = UDim2.new(0, 134, 0, 32)
+    Fetch.Font = Enum.Font.Arial
+    Fetch.Text = "Fetch"
+    Fetch.TextColor3 = Color3.fromRGB(0, 0, 0)
+    Fetch.TextSize = 20.000
+    
+    UICorner.CornerRadius = UDim.new(0, 3)
+    UICorner.Parent = TextBox
+    
+    UIPadding_2.Parent = TextBox
+    UIPadding_2.PaddingBottom = UDim.new(0, 7)
+    UIPadding_2.PaddingLeft = UDim.new(0, 7)
+    UIPadding_2.PaddingRight = UDim.new(0, 7)
+    UIPadding_2.PaddingTop = UDim.new(0, 7)
+
+    local STATUS = Instance.new("TextLabel")
+    local UIPadding = Instance.new("UIPadding")
+    
+    STATUS.Name = "STATUS"
+    STATUS.Parent = Frame
+    STATUS.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    STATUS.BackgroundTransparency = 1.000
+    STATUS.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    STATUS.BorderSizePixel = 0
+    STATUS.Size = UDim2.new(1, 0, 1, 0)
+    STATUS.ZIndex = 656
+    STATUS.Font = Enum.Font.Arial
+    STATUS.RichText = true
+    STATUS.Text = 'Welcome to the <b>Script Hub.</b>\nSearch up any script across ScriptBlox.'
+    STATUS.TextColor3 = Color3.fromRGB(122, 122, 122)
+    STATUS.TextSize = 25.000
+    STATUS.TextStrokeTransparency = 0.000
+    STATUS.TextTransparency = 0.400
+    STATUS.TextYAlignment = Enum.TextYAlignment.Bottom
+    
+    UIPadding.Parent = STATUS
+    UIPadding.PaddingBottom = UDim.new(0, 30)
+
+    local function Status(str)
+        print(str)
+        STATUS.Text = str
+    end
+
+    local noproblemscriptblox = Instance.new("TextLabel")
+    noproblemscriptblox.Name = "noproblemscriptblox"
+    noproblemscriptblox.Parent = Frame
+    noproblemscriptblox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    noproblemscriptblox.BackgroundTransparency = 1.000
+    noproblemscriptblox.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    noproblemscriptblox.BorderSizePixel = 0
+    noproblemscriptblox.Position = UDim2.new(0.0302491095, 0, 0.0444099978, 0)
+    noproblemscriptblox.Size = UDim2.new(0, 190, 0, 13)
+    noproblemscriptblox.Font = Enum.Font.Arial
+    noproblemscriptblox.Text = "docs.scriptblox.com"
+    noproblemscriptblox.TextColor3 = Color3.fromRGB(95, 95, 95)
+    noproblemscriptblox.TextSize = 14.000
+    noproblemscriptblox.TextXAlignment = Enum.TextXAlignment.Left
+
+    noproblemscriptblox.MouseButton1Down:Connect(function()
+        noproblemscriptblox.TextColor3 = Color3.fromRGB(
+            168    +    35,
+            114    +    35,
+            255    +    35
+        )
+        setclipboard('https://docs.scriptblox.com/')
+    end)
+
+    noproblemscriptblox.MouseEnter:Connect(function()
+        tweenService:Create(
+            noproblemscriptblox,
+            TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+            {
+                TextColor3 = Color3.fromRGB(168, 114, 255)
+            }
+        ):Play()
+    end)
+
+    noproblemscriptblox.MouseLeave:Connect(function()
+        tweenService:Create(
+            noproblemscriptblox,
+            TweenInfo.new(0.7, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+            {
+                TextColor3 = Color3.fromRGB(95, 95, 95)
+            }
+        ):Play()
+    end)
+
+    Hub.MouseButton1Down:Connect(function()
+        Frame.Visible = not Frame.Visible
+    end)
+
+    local function Clear()
+        for _, v in ipairs(Objects:GetChildren()) do
+            if not v:IsA("UIListLayout") and not v:IsA("UIPadding") then
+                v:Destroy()
+            end
+        end
+    end
+
+    -- Credits to Roblox Thot for showing solara vulnerabilites :^)
+    --[[
+        https://www.youtube.com/watch?v=w4JfAjhinV0
+        https://www.youtube.com/watch?v=hGZ0O_yjFFs
+        https://www.youtube.com/watch?v=pMCsj2xV4IA
+    ]]
+    -- surely solara already fixed these vulnerabilites, meaning I no longer need that warning thing
+    -- but, contrary to what I believe, I'll still keep it. who cares lol ¯\_(ツ)_/¯
+
+    local function AddScript(data)
+        local Script = Instance.new("ImageLabel")
+        local UICorner = Instance.new("UICorner")
+        local UIStroke = Instance.new("UIStroke")
+        local Name = Instance.new("TextLabel")
+        local UIGradient = Instance.new("UIGradient")
+        local Copy = Instance.new("TextButton")
+        local Run = Instance.new("TextButton")
+        
+        Script.Name = "Script"
+        Script.Parent = Objects
+        Script.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        Script.BorderColor3 = Color3.fromRGB(0, 0, 0)
+        Script.BorderSizePixel = 0
+        Script.Size = UDim2.new(0, 166, 0, 130)
+        Script.Image = data.Image or "rbxassetid://6558374856"
+        Script.ImageTransparency = 0.400
+        
+        UICorner.CornerRadius = UDim.new(0, 3)
+        UICorner.Parent = Script
+        
+        UIStroke.Parent = Script
+        UIStroke.Color = Color3.fromRGB(198, 198, 198)
+        
+        Name.Name = "Name"
+        Name.Parent = Script
+        Name.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        Name.BackgroundTransparency = 1.000
+        Name.BorderColor3 = Color3.fromRGB(0, 0, 0)
+        Name.BorderSizePixel = 0
+        Name.Position = UDim2.new(0, 0, 0.0538461544, 0)
+        Name.Size = UDim2.new(0, 166, 0, 22)
+        Name.Font = Enum.Font.Arial
+        Name.Text = data.Name or "Script Name"
+        Name.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Name.TextScaled = true
+        Name.TextSize = 14.000
+        Name.TextStrokeTransparency = 0.000
+        Name.TextWrapped = true
+        
+        UIGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(49, 49, 49))}
+        UIGradient.Rotation = -90
+        UIGradient.Parent = Script
+        
+        Copy.Name = "Copy"
+        Copy.Parent = Script
+        Copy.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        Copy.BackgroundTransparency = 0.500
+        Copy.BorderColor3 = Color3.fromRGB(179, 179, 179)
+        Copy.Position = UDim2.new(0.0421686731, 0, 0.77692306, 0)
+        Copy.Size = UDim2.new(0, 71, 0, 23)
+        Copy.Font = Enum.Font.Arial
+        Copy.Text = "Copy Script"
+        Copy.TextColor3 = Color3.fromRGB(0, 0, 0)
+        Copy.TextSize = 12.000
+        createinteractivefeature(Copy)
+        
+        Run.Name = "Run"
+        Run.Parent = Script
+        Run.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        Run.BackgroundTransparency = 0.500
+        Run.BorderColor3 = Color3.fromRGB(179, 179, 179)
+        Run.Position = UDim2.new(0.52409637, 0, 0.77692306, 0)
+        Run.Size = UDim2.new(0, 71, 0, 23)
+        Run.Font = Enum.Font.Arial
+        Run.Text = "Run Script"
+        Run.TextColor3 = Color3.fromRGB(0, 0, 0) 
+        Run.TextSize = 12.000
+        createinteractivefeature(Run)
+
+        local ranSoTrusted = false
+
+        Copy.MouseButton1Down:Connect(function()
+            if data.Verified then
+                setclipboard(tostring(data.Script))
+            else
+                setclipboard('--[[ This code is not verified by Scriptblox! Run with caution as script may contain malware by abusing exploit vulnerabilites. ]]\n'..tostring(data.Script))
+            end
+        end)
+
+        Run.MouseButton1Down:Connect(function()
+            if not data.Verified and not ranSoTrusted and readfile('ligma/config/IgnoreScriptwarning') == 'true' then
+                local MainFrame = Instance.new("Frame")
+                local ScriptTitle = Instance.new("TextLabel")
+                local lol = Instance.new("TextLabel")
+                local Run = Instance.new("TextButton")
+                local Close = Instance.new("TextButton")
+                
+                MainFrame.Name = "MainFrame"
+                MainFrame.Parent = ScreenGui
+                MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+                MainFrame.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+                MainFrame.BorderColor3 = Color3.fromRGB(175, 175, 175)
+                MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+                MainFrame.Size = UDim2.new(0, 332, 0, 228)
+
+                addClose(MainFrame)
+                
+                ScriptTitle.Name = "ScriptTitle"
+                ScriptTitle.Parent = MainFrame
+                ScriptTitle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                ScriptTitle.BackgroundTransparency = 1.000
+                ScriptTitle.BorderColor3 = Color3.fromRGB(0, 0, 0)
+                ScriptTitle.BorderSizePixel = 0
+                ScriptTitle.Position = UDim2.new(0.036144577, 0, 0.0701754391, 0)
+                ScriptTitle.Size = UDim2.new(0, 307, 0, 25)
+                ScriptTitle.Font = Enum.Font.Arial
+                ScriptTitle.Text = "Run script: "..data.Name.."?"
+                ScriptTitle.TextColor3 = Color3.fromRGB(253, 253, 253)
+                ScriptTitle.TextScaled = true
+                ScriptTitle.TextSize = 14.000
+                ScriptTitle.TextWrapped = true
+                
+                lol.Name = "lol"
+                lol.Parent = MainFrame
+                lol.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                lol.BackgroundTransparency = 1.000
+                lol.BorderColor3 = Color3.fromRGB(0, 0, 0)
+                lol.BorderSizePixel = 0
+                lol.Position = UDim2.new(0.036144577, 0, 0.210526317, 0)
+                lol.Size = UDim2.new(0, 307, 0, 88)
+                lol.Font = Enum.Font.Arial
+                lol.RichText = true
+                lol.Text = "This script may contain malware by abusing exploit vulnerabilities, or steal your account info.\n\n<font size='11' color='rgb(75, 75, 75)'>Source: Reddit and YouTube have shown that exploits like Solara have been prone to many vulnerabilites, letting users run windows programs. Some channels, many of which are \"Roblox Thot\" shown a screen melter using Solara.</font>"
+                lol.TextColor3 = Color3.fromRGB(129, 129, 129)
+                lol.TextSize = 17.000
+                lol.TextWrapped = true
+                lol.TextYAlignment = Enum.TextYAlignment.Top
+                
+                Run.Name = "Run"
+                Run.Parent = MainFrame
+                Run.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                Run.BorderColor3 = Color3.fromRGB(150, 150, 150)
+                Run.Position = UDim2.new(0.0451807231, 0, 0.758771837, 0)
+                Run.Size = UDim2.new(0, 146, 0, 34)
+                Run.Font = Enum.Font.Arial
+                Run.Text = "Run"
+                Run.TextColor3 = Color3.fromRGB(0, 0, 0)
+                Run.TextSize = 20.000
+                
+                createinteractivefeature(Run)
+                
+                Close.Name = "Close"
+                Close.Parent = MainFrame
+                Close.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                Close.BorderColor3 = Color3.fromRGB(150, 150, 150)
+                Close.Position = UDim2.new(0.512048185, 0, 0.758771837, 0)
+                Close.Size = UDim2.new(0, 146, 0, 34)
+                Close.Font = Enum.Font.Arial
+                Close.Text = "Close"
+                Close.TextColor3 = Color3.fromRGB(0, 0, 0)
+                Close.TextSize = 20.000
+
+                createinteractivefeature(Close)
+
+                Close.MouseButton1Down:Connect(function()
+                    MainFrame:Destroy()
+                end)
+
+                Run.MouseButton1Down:Connect(function()
+                    MainFrame:Destroy()
+                    loadstring(tostring(data.Script))()
+                    ranSoTrusted = true
+                end)
+
+                draggable(MainFrame)
+            else
+                loadstring(tostring(data.Script))()
+            end
+        end)
+    end
+
+    --[[
+        {
+            "result": {
+                "totalPages": number,
+                "nextPage": number,
+                "max": number,
+                "scripts": [
+                    {
+                        "_id": "string",
+                        "title": "string",
+                        "game": {
+                            "_id": "string",
+                            "name": "string",
+                            "imageUrl": "string"
+                        },
+                        "slug": "string",
+                        "verified": boolean,
+                        "key": boolean,
+                        "views": number,
+                        "scriptType": "string",
+                        "isUniversal": boolean,
+                        "isPatched": boolean,
+                        "image": "string",
+                        "createdAt": "string",
+                        "script": "string"
+                    },
+                    ...
+                ]
+            }
+        }        
+    ]]
+
+    local canFetch = true
+    local function FetchScripts(search)
+        if not canFetch then
+            return
+        end
+        canFetch = true
+        Clear()
+        Status("Fetching Scripts... Please Wait.")
+        local suc, data = pcall(function()
+            local url
+            if search ~= nil and search ~= "" then
+                url = "https://scriptblox.com/api/script/search?q="..http:UrlEncode(search)
+            else
+                url = "https://scriptblox.com/api/script/fetch"
+            end
+            local response = game:HttpGet(url)
+            return http:JSONDecode(response)
+        end)
+        if not suc then
+            Status(tostring(data))
+            canFetch = true
+            return
+        end
+        if not data or not data.result or not data.result.scripts or #data.result.scripts <= 0 then
+            Status("No Available Scripts...")
+            canFetch = true
+            return
+        end
+    
+        Status("Results for: "..tostring(search)..' (may take a while...)')
+    
+        for _, script in ipairs(data.result.scripts) do
+            local imageUrl = tostring(script.image or "")
+            local cachedFile
+            for _, file in ipairs(listfiles('ligma/.cache')) do
+                local suc, contents = pcall(readfile, file)
+                if suc and contents == game:HttpGet("https://scriptblox.com"..imageUrl) then
+                    cachedFile = file
+                    break
+                end
+            end
+            if not cachedFile then
+                local fileName = tostring(math.random(1000, 1000000))..".png"
+                cachedFile = 'ligma/.cache'.."/"..fileName
+                writefile(cachedFile, game:HttpGet("https://scriptblox.com"..imageUrl))
+            end
+            AddScript({
+                Image = getcustomasset(cachedFile) or 'rbxassetid://16202377195',
+                Name = script.title or "Unknown",
+                Script = script.script or "-- no script",
+                Verified = script.verified or false
+            })
+        end
+    
+        task.wait(0.05)
+    
+        Status("")
+        canFetch = true
+    end
+
+    Fetch.MouseButton1Down:Connect(function()
+        FetchScripts(tostring(TextBox.Text))
+    end)
+
+end
+
+draggable(shared.HubFrame)
