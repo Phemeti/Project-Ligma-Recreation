@@ -1647,6 +1647,8 @@ AddFile('John Doe', 'require(8973689388).load("'..(player.Name or 'yourusername'
 AddFile('Kasper Trolling', 'require(6414405864).KUTG("'..(player.Name or 'yourusername')..'")')
 AddFile('Krono Hub', 'require(9275293020).load("'..(player.Name or 'yourusername')..'")')
 AddFile('Sonic Hub', 'require(5352721272):Fire("'..(player.Name or 'yourusername')..'")')
+AddFile('ChudGUI', 'require(84472651256445).chud("'..game.Players.LocalPlayer.Name or 'yourusername'..'")')
+
 
 AddFile('Abuse Detection', 'require(8626754476):AD()')
 AddFile('Anti-Kick', 'require(4820862445).load')
