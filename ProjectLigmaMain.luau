@@ -7,6 +7,12 @@ if not isfolder('ligma') then
     makefolder('ligma')
 end
 
+if isfolder('ligma/.cache') then
+    for _, v in listfiles('ligma/.cache') do
+        delfile(v)
+    end
+end
+
 local verdata = game:HttpGet('https://raw.githubusercontent.com/Phemeti/Project-Ligma-Recreation/refs/heads/main/info/version.txt')
 
 if not isfile('ligma/version.txt') then
@@ -55,7 +61,18 @@ local soundService = game:GetService('SoundService')
 local UIS = game:GetService("UserInputService")
 local chatservice = game:GetService("TextChatService")
 local runservice = game:GetService('RunService')
+local textservice = game:GetService('TextService')
+local startergui = game:GetService('StarterGui')
+local logservice = game:GetService("LogService")
 local rbxreplicatedstorage = game:GetService('RobloxReplicatedStorage')
+
+local player =  playersService.LocalPlayer
+local mouse = player:GetMouse()
+
+local textService = game:GetService("TextService")
+local runService = game:GetService("RunService")
+local players = game:GetService("Players")
+local mouse = players.LocalPlayer:GetMouse()
 
 local function draggable(Frame)
     Frame.Active = true
@@ -203,7 +220,9 @@ local Config = {
     Keybind = Ligma:AddConfig('Keybind', 'Z'),
     PS4Logo = Ligma:AddConfig('PS4Logo', 'true'),
     FPSCounter = Ligma:AddConfig('FPSCounter', 'true'),
-    IgnoreScriptwarning = Ligma:AddConfig('IgnoreScriptWarning', 'false')
+    IgnoreScriptwarning = Ligma:AddConfig('IgnoreScriptWarning', 'false'),
+    EnableTooltips = Ligma:AddConfig('EnableTooltips', 'true'),
+    SoundsToggle = Ligma:AddConfig('SoundsToggle', 'true')
 }
 
 local function toBool(v)
@@ -232,7 +251,9 @@ Ligma.AddSound = function(self, soundsettings)
     end
 
     startupmodule.Play = function(self)
-        startup:Play()
+        if readfile('ligma/config/SoundsToggle') == 'true' then
+            startup:Play()
+        end
     end
     startupmodule.Stop = function(self)
         startup:Stop()
@@ -243,6 +264,9 @@ Ligma.AddSound = function(self, soundsettings)
 
     return startupmodule
 end
+
+local textService = game:GetService("TextService")
+
 
 local function Priority(frame)
     local function bringToFront(frame)
@@ -299,11 +323,86 @@ end
 if shared.oldligmagui then
     shared.oldligmagui:Destroy()
 end
+
+-- Ligma Screen Gui / GUI / UI / Screen GUI / MainGUI / Main GUI
+
 local ScreenGui = Instance.new("ScreenGui")
 shared.oldligmagui = ScreenGui
 ScreenGui.IgnoreGuiInset = true
-ScreenGui.Parent = gethui and gethui() or coreGui
 ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = gethui and gethui() or coreGui
+
+local function text2x(textInstance)
+	local sizeParams = textService:GetTextSize(
+		textInstance.Text, 
+		textInstance.TextSize,
+		textInstance.Font,
+		Vector2.new(math.huge, math.huge)
+	)
+	return sizeParams.X
+end
+
+local function AddTooltip(obj, name, dark)
+	local ToolTip = Instance.new("TextLabel")
+	
+	ToolTip.Parent = ScreenGui
+	ToolTip.BackgroundColor3 = not dark and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(10,10,10)
+	ToolTip.BorderColor3 = Color3.fromRGB(84, 84, 84)
+	ToolTip.Font = Enum.Font.Arial
+	ToolTip.Text = name
+	ToolTip.TextColor3 = not dark and Color3.fromRGB(0, 0, 0) or Color3.fromRGB(244,244,244)
+	ToolTip.TextSize = 15.000
+	ToolTip.TextWrapped = false
+	ToolTip.Visible = false
+
+	ToolTip.Size = UDim2.new(0, text2x(ToolTip) + 15, 0, 24)
+	obj.MouseEnter:Connect(function()
+        if readfile('ligma/config/EnableTooltips') == 'true' then
+            ToolTip.Size = UDim2.new(0, text2x(ToolTip) + 15 - 10, 0, 24 - 10)
+            tweenService:Create(
+                ToolTip,
+                TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+                {
+                    Size = UDim2.new(0, text2x(ToolTip) + 15, 0, 24)
+                }
+            ):Play()
+            ToolTip.Visible = true
+        else
+            ToolTip.Visible = false
+        end
+	end)
+	obj.MouseLeave:Connect(function()
+        if readfile('ligma/config/EnableTooltips') == 'true' then
+            ToolTip.Size = UDim2.new(0, text2x(ToolTip) + 15, 0, 24)
+            ToolTip.Visible = false
+            local clone = ToolTip:Clone()
+            clone.Visible = true
+            clone.Parent = ToolTip.Parent
+            local scale = Instance.new('UIScale')
+            scale.Parent = clone
+            tweenService:Create(
+                clone,
+                TweenInfo.new(1, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+                {
+                    Transparency = 1
+                }
+            ):Play()
+            tweenService:Create(
+                scale,
+                TweenInfo.new(1, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+                {
+                    Scale = -2
+                }
+            ):Play()
+        else
+            ToolTip.Visible = false
+        end
+	end)
+
+	runService.RenderStepped:Connect(function()
+		ToolTip.Position = UDim2.new(0, mouse.X + 10, 0, mouse.Y + 30)
+	end)
+end
 
 local Main = Instance.new("Frame")
 Main.Parent = ScreenGui
@@ -559,13 +658,30 @@ do
     FPS.Font = Enum.Font.Arial
     FPS.TextSize = 8
     FPS.TextXAlignment = Enum.TextXAlignment.Left
-    runservice.RenderStepped:Connect(function(dt)
-        local frames = (math.floor(math.abs(1 / dt)))
-        if frames % 2 == 0 then
-            FPS.Text = readfile('ligma/config/FPSCounter') == 'true' and 'FPS: '..tostring(frames) or ''
-        end
 
+    --[[
+        Getting the most accurate player FPS.
+        DevForum Link: https://devforum.roblox.com/t/get-client-fps-trough-a-script/282631/13
+
+        Credits: HowManySmall
+    ]]
+    
+    local TimeFunction = time
+    local LastIteration, Start
+    local FrameUpdateTable = {}
+    
+    game:GetService("RunService").Heartbeat:Connect(function()
+        LastIteration = TimeFunction()
+    
+        for Index = #FrameUpdateTable, 1, -1 do
+            FrameUpdateTable[Index + 1] = FrameUpdateTable[Index] >= LastIteration - 1 and FrameUpdateTable[Index] or nil
+        end
+    
+        FrameUpdateTable[1] = LastIteration
+        FPS.Text = tostring(math.floor(TimeFunction() - Start >= 1 and #FrameUpdateTable or #FrameUpdateTable / (TimeFunction() - Start))) .. " FPS"
     end)
+    
+    Start = TimeFunction()
 end
 
 local Minimize = Instance.new("TextButton")
@@ -630,7 +746,7 @@ Scroller.ScrollingDirection = Enum.ScrollingDirection.XY
 Scroller.CanvasSize = UDim2.new(0,0,0,255)
 
 local Lines = Instance.new("TextLabel")
-Lines.Parent = Scroller
+Lines.Parent = Main
 Lines.Size = UDim2.new(0,30,0,255)
 Lines.BackgroundColor3 = Color3.fromRGB(200,200,200)
 Lines.TextColor3 = Color3.fromRGB(100,100,100)
@@ -639,11 +755,12 @@ Lines.TextSize = 12
 Lines.TextXAlignment = Enum.TextXAlignment.Center
 Lines.TextYAlignment = Enum.TextYAlignment.Top
 Lines.Text = "1"
+Lines.Visible = false
 
 local ScriptBox = Instance.new("TextBox")
 ScriptBox.Parent = Scroller
 ScriptBox.Position = UDim2.new(0,35,0,0)
-ScriptBox.Size = UDim2.new(1,-35,0,255)
+ScriptBox.Size = UDim2.new(1,0,0,255)
 ScriptBox.BackgroundTransparency = 0
 ScriptBox.BackgroundColor3 = Color3.fromRGB(ScriptBoxBackgroundColor,ScriptBoxBackgroundColor,ScriptBoxBackgroundColor)
 ScriptBox.Text = "print('hello world')"
@@ -656,10 +773,13 @@ ScriptBox.TextWrapped = false
 ScriptBox.Font = Enum.Font.Code
 ScriptBox.TextSize = 12
 
+local ScriptBoxBackgroundColor
+local ScriptBoxTextColor
+
 local function updatescriptboxcolors(bkgcolor, txtcolor)
     -- this is like the only time i've seen column be "useful"
-    local ScriptBoxBackgroundColor = bkgcolor or 233
-    local ScriptBoxTextColor       = txtcolor or 10
+    ScriptBoxBackgroundColor       = bkgcolor or 233
+    ScriptBoxTextColor             = txtcolor or 10
     ScriptBox.BackgroundColor3     = Color3.fromRGB(ScriptBoxBackgroundColor,ScriptBoxBackgroundColor,ScriptBoxBackgroundColor)
     ScriptBox.TextColor3           = Color3.fromRGB(ScriptBoxTextColor,ScriptBoxTextColor,ScriptBoxTextColor)
 end
@@ -857,7 +977,7 @@ local function AddSideButton(text, fontSize)
     local btn = Instance.new("TextButton")
     btn.Parent = SidePanel
     btn.Size = UDim2.new(1,0,0,75)
-    btn.Text = text..'  '
+    btn.Text = text..''
     btn.BackgroundColor3 = Color3.fromRGB(245,245,245)
     btn.BorderColor3 = Color3.fromRGB(150,150,150)
     btn.TextColor3 = Color3.fromRGB(0,0,0)
@@ -881,7 +1001,29 @@ end)
 --local R6 = AddSideButton("R6", 14)
 
 do
-    local Dissector = AddSideButton("EXHUME", 11)
+    local Dissector = Instance.new("ImageButton")
+    Dissector.Parent = Main
+    Dissector.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Dissector.BackgroundTransparency = 1
+    Dissector.ImageTransparency = 0.2
+    Dissector.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    AddSounds(Dissector)
+    Dissector.Position = UDim2.new(
+        0,
+        30 * 16,
+        0,
+        280
+    )
+
+    if not isfile('ligma/exhume.png') then
+        writefile('ligma/exhume.png', game:HttpGet('https://raw.githubusercontent.com/Phemeti/Project-Ligma-Recreation/refs/heads/main/Exhume_Dark.png'))
+    end
+
+    Dissector.BorderSizePixel = 0
+    Dissector.Size = UDim2.new(0, 30, 0, 30)
+    Dissector.Image = getcustomasset('ligma/exhume.png')
+    Dissector.ImageColor3 = Color3.fromRGB(0, 0, 0)
+    AddTooltip(Dissector, 'Script viewer by Squrri')
 
     local Frame = Instance.new("Frame")
     local TextLabel = Instance.new("TextLabel")
@@ -1110,6 +1252,21 @@ do
 end
 
 local RightPanel = Instance.new("ScrollingFrame")
+
+local function paneldivider(text)
+    local DiViDeR = Instance.new("TextButton")
+    DiViDeR.Parent = RightPanel
+    DiViDeR.AutoButtonColor = false
+    DiViDeR.Size = UDim2.new(1,0,0,25)
+    DiViDeR.Position = UDim2.new(0,0,0,0)
+    DiViDeR.Text = text
+    DiViDeR.BorderSizePixel = 0
+    DiViDeR.BackgroundColor3 = Color3.fromRGB(222,222,222)
+    DiViDeR.TextColor3 = Color3.fromRGB(70,70,70)
+    DiViDeR.Font = Enum.Font.Arial
+    DiViDeR.TextSize = 13
+end
+
 local PANELIST = Instance.new("UIListLayout")
 PANELIST.Parent = RightPanel
 RightPanel.Parent = Main
@@ -1120,21 +1277,328 @@ RightPanel.BackgroundColor3 = Color3.fromRGB(177,177,177)
 RightPanel.BorderColor3 = Color3.fromRGB(150,150,150)
 
 local function AddFile(name, script)
-    local thing = Instance.new("TextButton")
-    thing.Parent = RightPanel
-    thing.Size = UDim2.new(1,0,0,20)
-    thing.Position = UDim2.new(0,0,0,66)
-    thing.Text = tostring(name)..' '
-    thing.BackgroundColor3 = Color3.fromRGB(245,245,245)
-    thing.BorderSizePixel = 0.7
-    thing.TextColor3 = Color3.fromRGB(0,0,0)
-    thing.Font = Enum.Font.Arial
-    thing.TextSize = 11
-    thing.MouseButton1Down:Connect(function()
-        ScriptBox.Text = tostring(script)
-    end)
+    if not isfile('ligma/blacklisted_files/'..name) then
+        local thing = Instance.new("TextButton")
+        thing.Parent = RightPanel
+        thing.Size = UDim2.new(1,0,0,20)
+        thing.Position = UDim2.new(0,0,0,66)
+        thing.Text = tostring(name)..' '
+        thing.BackgroundColor3 = Color3.fromRGB(245,245,245)
+        thing.BorderSizePixel = 0.7
+        thing.TextColor3 = Color3.fromRGB(0,0,0)
+        thing.Font = Enum.Font.Arial
+        thing.TextSize = 11
+        thing.MouseButton1Down:Connect(function()
+            ScriptBox.Text = tostring(script)
+        end)
+
+
+    end
 end
 
+paneldivider('Client-Side')
+
+AddFile('Vape V4', [[loadstring(game:HttpGet("https://raw.githubusercontent.com/7GrandDadPGN/VapeV4ForRoblox/main/NewMainScript.lua", true))()]])
+
+AddFile('Hrakeri', [[local LMG2L = {}
+
+-- ScreenGui
+LMG2L["ScreenGui_1"] = Instance.new("ScreenGui", game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"))
+LMG2L["ScreenGui_1"].Name = "Hrakeri gui v3"
+LMG2L["ScreenGui_1"].ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- Frame
+LMG2L["Frame_2"] = Instance.new("Frame", LMG2L["ScreenGui_1"])
+local frame = LMG2L["Frame_2"]
+frame.BorderSizePixel = 0
+frame.BackgroundColor3 = Color3.fromRGB(255,244,0)
+frame.Size = UDim2.new(0,626,0,396)
+frame.Position = UDim2.new(0,74,0,-52)
+
+-- Drag Script
+local UserInputService = game:GetService("UserInputService")
+local dragging, dragStart, startPos = false, nil, nil
+local function update(input)
+	local delta = input.Position - dragStart
+	frame.Position = UDim2.new(startPos.X.Scale,startPos.X.Offset + delta.X,startPos.Y.Scale,startPos.Y.Offset + delta.Y)
+end
+frame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = input.Position
+		startPos = frame.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+frame.InputChanged:Connect(function(input)
+	if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+		update(input)
+	end
+end)
+
+-- Title
+LMG2L["TextLabel_16"] = Instance.new("TextLabel", frame)
+local title = LMG2L["TextLabel_16"]
+title.Size = UDim2.new(0,624,0,34)
+title.Position = UDim2.new(0,0,0,2)
+title.BackgroundTransparency = 1
+title.Text = "Hrakeri gui v3"
+title.TextScaled = true
+title.TextWrapped = true
+title.TextColor3 = Color3.fromRGB(255,255,255)
+
+-- TextBox Project
+LMG2L["TextBox_17"] = Instance.new("TextBox", frame)
+local projectBox = LMG2L["TextBox_17"]
+projectBox.Size = UDim2.new(0,244,0,118)
+projectBox.Position = UDim2.new(0,16,0,260)
+projectBox.BackgroundColor3 = Color3.fromRGB(255,255,255)
+projectBox.BorderSizePixel = 2
+projectBox.Text = ""
+projectBox.TextScaled = true
+projectBox.TextWrapped = true
+
+-- Clear Project Button
+LMG2L["TextButton17_18"] = Instance.new("TextButton", frame)
+local clearBtn = LMG2L["TextButton17_18"]
+clearBtn.Size = UDim2.new(0,126,0,64)
+clearBtn.Position = UDim2.new(0,380,0,326)
+clearBtn.Text = "Clear"
+clearBtn.TextScaled = true
+clearBtn.BackgroundColor3 = Color3.fromRGB(255,0,0)
+clearBtn.MouseButton1Click:Connect(function()
+	projectBox.Text = ""
+end)
+
+-- Function to create buttons easily
+local function createButton(name,text,pos,size,color,callback)
+	local btn = Instance.new("TextButton", frame)
+	btn.Name = name
+	btn.Text = text
+	btn.Position = pos
+	btn.Size = size
+	btn.BackgroundColor3 = color
+	btn.TextScaled = true
+	btn.TextWrapped = true
+	btn.MouseButton1Click:Connect(callback)
+	return btn
+end
+
+-- Buttons
+
+-- Skybox (Ù„ÙˆÙ† Ø£Ø­Ù…Ø±)
+createButton("TextButton1","Skybox",UDim2.new(0,8,0,54),UDim2.new(0,102,0,50),Color3.fromRGB(255,0,0),function()
+	local Lighting = game:GetService("Lighting")
+	local sky = Instance.new("Sky")
+	sky.Parent = Lighting
+	local id = "rbxassetid://72667530159358"
+	sky.SkyboxBk = id
+	sky.SkyboxDn = id
+	sky.SkyboxFt = id
+	sky.SkyboxLf = id
+	sky.SkyboxRt = id
+	sky.SkyboxUp = id
+	Lighting.Brightness = 2
+	Lighting.ClockTime = 14
+end)
+
+-- Decal
+createButton("TextButton2","Decal",UDim2.new(0,124,0,56),UDim2.new(0,102,0,48),Color3.fromRGB(255,0,0),function()
+	local id = "72667530159358"
+	for _, obj in pairs(game:GetDescendants()) do
+		if obj:IsA("Part") or obj:IsA("MeshPart") then
+			for _, face in pairs({Enum.NormalId.Back,Enum.NormalId.Top,Enum.NormalId.Left,Enum.NormalId.Front,Enum.NormalId.Right,Enum.NormalId.Bottom}) do
+				local decal = Instance.new("Decal")
+				decal.Parent = obj
+				decal.Texture = "rbxassetid://"..id
+				decal.Face = face
+			end
+		end
+	end
+end)
+
+-- Pictures
+createButton("TextButton3","Pictures",UDim2.new(0,236,0,58),UDim2.new(0,106,0,48),Color3.fromRGB(255,0,0),function()
+	local pe = Instance.new("ParticleEmitter", game.Players.LocalPlayer.Character:WaitForChild("Torso"))
+	pe.Texture = "rbxassetid://72667530159358"
+	pe.VelocitySpread = 90
+end)
+
+-- Jump scare
+createButton("TextButton4","Jump scare",UDim2.new(0,356,0,56),UDim2.new(0,102,0,48),Color3.fromRGB(255,0,0),function()
+	local me = game.Players.LocalPlayer.Name
+	for i,v in pairs(game.Players:GetPlayers()) do
+		if v.Name ~= me and v:FindFirstChild("PlayerGui") and not v.PlayerGui:FindFirstChild("Screamer") then
+			spawn(function()
+				local newgui = Instance.new("ScreenGui", v.PlayerGui)
+				newgui.Name = "Screamer"
+				local newimage = Instance.new("ImageLabel", newgui)
+				newimage.Image = "rbxassetid://102469273448144"
+				newimage.Size = UDim2.new(1,0,1,0)
+				local s = Instance.new("Sound", newgui)
+				s.SoundId = "rbxassetid://6129291390"
+				s.Volume = 10
+				s.Looped = true
+				s:Play()
+				wait(9.4)
+				newgui:Destroy()
+			end)
+		end
+	end
+end)]])
+
+AddFile('TeamMaker', [[-- LocalScript inside StarterPlayerScripts
+local Players = game:GetService("Players")
+local Teams = game:GetService("Teams")
+local UserInputService = game:GetService("UserInputService")
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+
+-- Create ScreenGui
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "TeamCreatorGui"
+ScreenGui.Parent = PlayerGui
+
+-- Create Frame
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 300, 0, 180)
+Frame.Position = UDim2.new(0.5, -150, 0.5, -90)
+Frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Frame.BorderSizePixel = 0
+Frame.Parent = ScreenGui
+
+-- Title (for dragging)
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Position = UDim2.new(0, 0, 0, 0)
+Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Title.Text = "Team Creator"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 20
+Title.Parent = Frame
+
+-- Make GUI draggable
+local dragging = false
+local dragInput, mousePos, framePos
+
+Title.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		mousePos = input.Position
+		framePos = Frame.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+Title.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement then
+		dragInput = input
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if input == dragInput and dragging then
+		local delta = input.Position - mousePos
+		Frame.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
+	end
+end)
+
+-- Input box to type team name
+local TextBox = Instance.new("TextBox")
+TextBox.Size = UDim2.new(0, 220, 0, 30)
+TextBox.Position = UDim2.new(0.5, -110, 0, 50)
+TextBox.PlaceholderText = "Enter team name..."
+TextBox.Text = ""
+TextBox.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextBox.Font = Enum.Font.SourceSans
+TextBox.TextSize = 18
+TextBox.Parent = Frame
+
+-- Button to create team
+local Button = Instance.new("TextButton")
+Button.Size = UDim2.new(0, 150, 0, 40)
+Button.Position = UDim2.new(0.5, -75, 0, 100)
+Button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+Button.Font = Enum.Font.SourceSansBold
+Button.TextSize = 20
+Button.Text = "Create Team"
+Button.Parent = Frame
+
+-- When clicked: create team and put yourself in it
+Button.MouseButton1Click:Connect(function()
+	local teamName = TextBox.Text
+	if teamName == "" then return end
+	
+	-- Check if team already exists
+	local existingTeam = Teams:FindFirstChild(teamName)
+	if existingTeam then
+		Player.Team = existingTeam
+	else
+		-- Create new team
+		local newTeam = Instance.new("Team")
+		newTeam.Name = teamName
+		newTeam.TeamColor = BrickColor.Random() -- random color
+		newTeam.Parent = Teams
+		Player.Team = newTeam
+	end
+end)]])
+
+AddFile('GamepassSpoofer', [[loadstring(game:HttpGet("https://gist.githubusercontent.com/infault/49cc129c99962d52b8c3980088e2de3c/raw/5778989c37e85bd576f7ec44fab9b0f53c7bafe8/gistfile1.txt"))()]])
+
+AddFile('KoopKidd', [[-- Note by Squrri: this only works on hd admin games : ^ >\n]]..game:HttpGet('https://rawscripts.net/raw/Universal-Script-k00pgui-v8-F3X-EDITON-52670'))
+
+AddFile('Dex', [[loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()]])
+
+AddFile('Remote Spy', [[loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/SimpleSpyV3/main.lua"))()]])
+AddFile('Infinite Yield', [[loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()]])
+AddFile('Anti-Kick', [[local old
+old = hookmetamethod(game, '__namecall', function(self, ...)
+    if getnamecallmethod() == 'Kick' and self == game.Players.LocalPlayer then
+        return
+    end
+    return old(self, ...)
+end)]])
+AddFile('Anti-Shutdown', [[local old
+old = hookmetamethod(game, '__namecall', function(self, ...)
+    if getnamecallmethod() == 'Shutdown' then
+        return
+    end
+    return old(self, ...)
+end)]])
+AddFile('Spoof WalkSpeed', [[local FakeWalkSpeedValue = 16
+
+local old
+old = hookmetamethod(game, '__index', function(self, prop)
+    if self == game.Players.LocalPlayer.Character.Humanoid and prop == 'WalkSpeed' then
+        return FakeWalkSpeedValue
+    end
+    return old(self, prop)
+end)]])
+AddFile('Spoof JumpPower', [[local FakeJumpPowerValue = 50
+
+local old
+old = hookmetamethod(game, '__index', function(self, prop)
+    if self == game.Players.LocalPlayer.Character.Humanoid and prop == 'JumpPower' then
+        return FakeJumpPowerValue
+    end
+    return old(self, prop)
+end)]])
+AddFile('FOV', [[local Value = 120
+
+workspace.CurrentCamera.FieldOfView = Value]])
+
+paneldivider('Server-Side')
 local CoolGui = Instance.new("TextButton")
 CoolGui.Parent = RightPanel
 CoolGui.Size = UDim2.new(1,0,0,20)
@@ -1343,6 +1807,7 @@ Gear.BorderSizePixel = 0
 Gear.Size = UDim2.new(0, 30, 0, 30)
 Gear.Image = "rbxassetid://2484550853"
 Gear.ImageColor3 = Color3.fromRGB(0, 0, 0)
+AddTooltip(Gear, 'Change UI Settings')
 
 local SETTINGS = Instance.new("Frame")
 local UIStroke = Instance.new("UIStroke")
@@ -1481,6 +1946,9 @@ local function createtoggle(name, default, callback)
     return {
         GetValue = function()
             return state
+        end,
+        GetObject = function(self)
+            return button
         end
     }
 end
@@ -1555,6 +2023,9 @@ local function createtextbox(name, val, onChange)
     return {
         GetValue = function(self)
             return TEXTBOX_TextBox.Text
+        end,
+        GetObject = function(self)
+            return TEXTBOX_MODULE
         end
     }
 end
@@ -1564,12 +2035,25 @@ keybind = createtextbox('Keybind', readfile('ligma/config/Keybind') or 'Z', func
     Config.Keybind:SetValue(keybind:GetValue())
 end)
 
+AddTooltip(keybind:GetObject(), 'The key to toggle the GUI')
+
+local soundstoggle
+soundstoggle = createtoggle('Enable Sounds', toBool(readfile('ligma/config/PS4Logo')), (function()
+    local state = soundstoggle:GetValue()
+    Config.SoundsToggle:SetValue(state and 'true' or 'false')
+end))
+
+AddTooltip(soundstoggle:GetObject(), 'Toggles mute on hover/click/close sounds.')
+
 local logotoggle
-logotoggle = createtoggle('Ligma Logo', toBool(readfile('ligma/config/PS4Logo')), function()
+logotoggle = createtoggle('Ligma Logo', toBool(readfile('ligma/config/PS4Logo')), (function()
     local state = logotoggle:GetValue()
     Config.PS4Logo:SetValue(state and 'true' or 'false')
     shared.PS4Logo.Visible = state
-end)
+end))
+
+AddTooltip(logotoggle:GetObject(), 'Toggles the PS3 bottle cap in the bottom left')
+
 local fpscounter
 local showFPS = readfile('ligma/config/FPSCounter') == 'true' and true or false
 fpscounter = createtoggle('FPS Counter', toBool(readfile('ligma/config/FPSCounter')), function()
@@ -1583,6 +2067,17 @@ ignorescriptwarning = createtoggle('Ignore Script Warning', toBool(readfile('lig
     local state = ignorescriptwarning:GetValue()
     Config.IgnoreScriptwarning:SetValue(state and 'true' or 'false')
 end)
+
+AddTooltip(ignorescriptwarning:GetObject(), 'Disables the un-verified script popup')
+
+local enabletooltips
+enabletooltips = createtoggle('Enable Tooltips', toBool(readfile('ligma/config/EnableTooltips')), function()
+    local state = enabletooltips:GetValue()
+    Config.EnableTooltips:SetValue(state and 'true' or 'false')
+end)
+
+AddTooltip(enabletooltips:GetObject(), 'Enables these things (what you\'re looking at right now)')
+
 
 shared.PS4Logo.Visible = toBool(readfile('ligma/config/PS4Logo'))
 --https://discord.gg/uGtE5D6gmX
@@ -1679,6 +2174,8 @@ do
     ReadAloud.TextColor3 = Color3.fromRGB(10,10,10)
     ReadAloud.TextSize = 14
 
+    AddTooltip(ReadAloud, 'Text to speech reader')
+
     AddSounds(ReadAloud)
     createinteractivefeature(ReadAloud)
 
@@ -1721,6 +2218,7 @@ do
         0,
         282.5
     )
+    AddTooltip(Info, 'Information about Project Ligma & credits')
     -- Js's Duels on top son
     --  - PMR
     Info.Size = UDim2.new(0, 25, 0, 25)
@@ -1735,7 +2233,24 @@ do
 end
 
 do -- Hub GUI
-    local Hub = AddSideButton("HUB", 11)
+    local Hub = Instance.new("ImageButton")
+    Hub.Parent = Main
+    Hub.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Hub.BackgroundTransparency = 1
+    Hub.ImageTransparency = 0.2
+    Hub.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    AddSounds(Hub)
+    Hub.Position = UDim2.new(
+        0,
+        30 * 17,
+        0,
+        280
+    )
+    Hub.BorderSizePixel = 0
+    Hub.Size = UDim2.new(0, 30, 0, 30)
+    Hub.Image = "rbxassetid://11570895459"
+    Hub.ImageColor3 = Color3.fromRGB(0, 0, 0)
+    AddTooltip(Hub, 'Access more scripts from Scriptblox')
 
     local Frame = Instance.new("Frame")
     local TextLabel = Instance.new("TextLabel")
@@ -1870,9 +2385,10 @@ do -- Hub GUI
         STATUS.Text = str
     end
 
-    local noproblemscriptblox = Instance.new("TextLabel")
+    local noproblemscriptblox = Instance.new("TextButton")
     noproblemscriptblox.Name = "noproblemscriptblox"
     noproblemscriptblox.Parent = Frame
+    noproblemscriptblox.AutoButtonColor = false
     noproblemscriptblox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     noproblemscriptblox.BackgroundTransparency = 1.000
     noproblemscriptblox.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -1884,6 +2400,8 @@ do -- Hub GUI
     noproblemscriptblox.TextColor3 = Color3.fromRGB(95, 95, 95)
     noproblemscriptblox.TextSize = 14.000
     noproblemscriptblox.TextXAlignment = Enum.TextXAlignment.Left
+
+    AddTooltip(noproblemscriptblox, 'Click to copy the URL', true)
 
     noproblemscriptblox.MouseButton1Down:Connect(function()
         noproblemscriptblox.TextColor3 = Color3.fromRGB(
@@ -2206,3 +2724,235 @@ do -- Hub GUI
 end
 
 draggable(shared.HubFrame)
+
+do
+    local ConsoleButton = Instance.new("ImageButton")
+    ConsoleButton.Parent = Main
+    ConsoleButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    ConsoleButton.BackgroundTransparency = 1
+    ConsoleButton.ImageTransparency = 0.2
+    ConsoleButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    AddSounds(ConsoleButton)
+    ConsoleButton.Position = UDim2.new(0, 30 * 15, 0, 280)
+    ConsoleButton.BorderSizePixel = 0
+    ConsoleButton.Size = UDim2.new(0, 30, 0, 30)
+    ConsoleButton.Image = "rbxassetid://4728126418"
+    ConsoleButton.ImageColor3 = Color3.fromRGB(0, 0, 0)
+    AddTooltip(ConsoleButton, 'Shows you console output redirected from Roblox.')
+
+    local ConsoleWindow = Instance.new("Frame")
+    local UIStroke = Instance.new("UIStroke")
+    local OutputFrame = Instance.new("Frame")
+    local UICorner = Instance.new("UICorner")
+    local UIStroke_2 = Instance.new("UIStroke")
+    local UIPadding = Instance.new("UIPadding")
+    local OutputScrollingFrame = Instance.new("ScrollingFrame")
+    local UIListLayout = Instance.new("UIListLayout")
+    local OutputTextHere = Instance.new("TextLabel")
+    local EmptyIcon = Instance.new("ImageLabel")
+    local Title = Instance.new("TextLabel")
+    local Clear = Instance.new("TextButton")
+    local UICorner_2 = Instance.new("UICorner")
+    local UIStroke_3 = Instance.new("UIStroke")
+    local Copy = Instance.new("TextButton")
+    local UICorner_3 = Instance.new("UICorner")
+    local UIStroke_4 = Instance.new("UIStroke")
+
+    ConsoleWindow.Name = "ConsoleWindow"
+    ConsoleWindow.Parent = ScreenGui
+    ConsoleWindow.AnchorPoint = Vector2.new(0.5, 0.5)
+    ConsoleWindow.BackgroundColor3 = Color3.fromRGB(21, 21, 21)
+    ConsoleWindow.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    ConsoleWindow.BorderSizePixel = 0
+    ConsoleWindow.Position = UDim2.new(0.5, 0, 0.5, 0)
+    ConsoleWindow.Size = UDim2.new(0, 356, 0, 268)
+    ConsoleWindow.Visible = false
+
+    addClose(ConsoleWindow)
+    draggable(ConsoleWindow)
+
+    ConsoleButton.MouseButton1Down:Connect(function()
+        ConsoleWindow.Visible = not ConsoleWindow.Visible
+    end)
+
+    UIStroke.Parent = ConsoleWindow
+    UIStroke.Color = Color3.fromRGB(190, 190, 190)
+
+    OutputFrame.Name = "OutputFrame"
+    OutputFrame.Parent = ConsoleWindow
+    OutputFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    OutputFrame.BackgroundTransparency = 0.5
+    OutputFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    OutputFrame.BorderSizePixel = 0
+    OutputFrame.Position = UDim2.new(0.0449438207, 0, 0.13059701, 0)
+    OutputFrame.Size = UDim2.new(0, 325, 0, 194)
+
+    UICorner.CornerRadius = UDim.new(0, 5)
+    UICorner.Parent = OutputFrame
+
+    UIStroke_2.Parent = OutputFrame
+    UIStroke_2.Color = Color3.fromRGB(90, 76, 65)
+    UIStroke_2.Thickness = 1.02
+
+    UIPadding.Parent = OutputFrame
+    UIPadding.PaddingBottom = UDim.new(0, 5)
+    UIPadding.PaddingLeft = UDim.new(0, 7)
+    UIPadding.PaddingRight = UDim.new(0, 7)
+    UIPadding.PaddingTop = UDim.new(0, 5)
+
+    OutputScrollingFrame.Name = "OutputScrollingFrame"
+    OutputScrollingFrame.Parent = OutputFrame
+    OutputScrollingFrame.Active = true
+    OutputScrollingFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    OutputScrollingFrame.BackgroundTransparency = 1
+    OutputScrollingFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    OutputScrollingFrame.BorderSizePixel = 0
+    OutputScrollingFrame.Size = UDim2.new(1, 0, 1, 0)
+    OutputScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    OutputScrollingFrame.ScrollBarThickness = 4
+    OutputScrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.None
+
+    UIListLayout.Parent = OutputScrollingFrame
+    UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    UIListLayout.Padding = UDim.new(0, 2)
+
+    OutputTextHere.Name = "OutputTextHere"
+    OutputTextHere.Parent = nil
+    OutputTextHere.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    OutputTextHere.BackgroundTransparency = 1
+    OutputTextHere.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    OutputTextHere.BorderSizePixel = 0
+    OutputTextHere.Size = UDim2.new(1, -4, 0, 20)
+    OutputTextHere.Font = Enum.Font.RobotoMono
+    OutputTextHere.Text = ""
+    OutputTextHere.TextColor3 = Color3.fromRGB(168, 168, 168)
+    OutputTextHere.TextSize = 14
+    OutputTextHere.TextWrapped = true
+    OutputTextHere.TextXAlignment = Enum.TextXAlignment.Left
+    OutputTextHere.TextYAlignment = Enum.TextYAlignment.Top
+    OutputTextHere.AutomaticSize = Enum.AutomaticSize.Y
+
+    local messageColors = {
+        [Enum.MessageType.MessageOutput] = {200, 200, 200},
+        [Enum.MessageType.MessageInfo] = {100, 100, 255},
+        [Enum.MessageType.MessageWarning] = {255, 255, 150},
+        [Enum.MessageType.MessageError] = {200, 80, 80}
+    }
+
+    local function updateCanvas()
+        OutputScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y + 5)
+        OutputScrollingFrame.CanvasPosition = Vector2.new(0, math.max(0, OutputScrollingFrame.CanvasSize.Y.Offset))
+    end
+
+    UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvas)
+
+    local function AppendOutput(str, color)
+        local newText = OutputTextHere:Clone()
+        newText.Parent = OutputScrollingFrame
+        newText.Text = tostring(str)
+        newText.TextColor3 = Color3.fromRGB(unpack(color or {200, 200, 200}))
+        newText.Visible = true
+        task.defer(updateCanvas)
+    end
+
+    logservice.MessageOut:Connect(function(message, messageType)
+        AppendOutput(message, messageColors[messageType])
+    end)
+
+    EmptyIcon.Name = "EmptyIcon"
+    EmptyIcon.Parent = OutputFrame
+    EmptyIcon.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    EmptyIcon.BackgroundTransparency = 1
+    EmptyIcon.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    EmptyIcon.BorderSizePixel = 0
+    EmptyIcon.Position = UDim2.new(0.337620586, 0, 0.152173907, 0)
+    EmptyIcon.Size = UDim2.new(0, 100, 0, 128)
+    EmptyIcon.Image = "rbxassetid://136172851866833"
+    EmptyIcon.ImageTransparency = 0.93
+
+    local function updateEmpty()
+        EmptyIcon.Visible = #OutputScrollingFrame:GetChildren() <= 1
+    end
+
+    OutputScrollingFrame.ChildAdded:Connect(updateEmpty)
+    OutputScrollingFrame.ChildRemoved:Connect(updateEmpty)
+
+    Title.Name = "Title"
+    Title.Parent = ConsoleWindow
+    Title.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Title.BackgroundTransparency = 1
+    Title.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    Title.BorderSizePixel = 0
+    Title.Size = UDim2.new(0, 356, 0, 35)
+    Title.Font = Enum.Font.Arial
+    Title.Text = "Console"
+    Title.TextColor3 = Color3.fromRGB(255, 212, 169)
+    Title.TextSize = 23
+    Title.TextStrokeColor3 = Color3.fromRGB(25, 25, 25)
+
+    Clear.Name = "Clear"
+    Clear.Parent = ConsoleWindow
+    Clear.BackgroundColor3 = Color3.fromRGB(13, 13, 13)
+    Clear.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    Clear.BorderSizePixel = 0
+    Clear.Position = UDim2.new(0.0449438207, 0, 0.876865685, 0)
+    Clear.Size = UDim2.new(0, 159, 0, 23)
+    Clear.Font = Enum.Font.Arial
+    Clear.Text = "Clear Output"
+    Clear.TextColor3 = Color3.fromRGB(221, 148, 148)
+    Clear.TextSize = 14
+    Clear.TextStrokeTransparency = 0
+
+    UICorner_2.CornerRadius = UDim.new(0, 3)
+    UICorner_2.Parent = Clear
+
+    UIStroke_3.Parent = Clear
+    UIStroke_3.Color = Color3.fromRGB(67, 45, 45)
+    UIStroke_3.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+    Clear.MouseButton1Click:Connect(function()
+        for _, child in ipairs(OutputScrollingFrame:GetChildren()) do
+            if child:IsA("TextLabel") then
+                child:Destroy()
+            end
+        end
+
+        updateCanvas()
+        updateEmpty()
+    end)
+
+    Copy.Name = "Copy"
+    Copy.Parent = ConsoleWindow
+    Copy.BackgroundColor3 = Color3.fromRGB(13, 13, 13)
+    Copy.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    Copy.BorderSizePixel = 0
+    Copy.Position = UDim2.new(0.511235952, 0, 0.876865685, 0)
+    Copy.Size = UDim2.new(0, 159, 0, 23)
+    Copy.Font = Enum.Font.Arial
+    Copy.Text = "Copy Output"
+    Copy.TextColor3 = Color3.fromRGB(159, 168, 221)
+    Copy.TextSize = 14
+    Copy.TextStrokeTransparency = 0
+
+    UICorner_3.CornerRadius = UDim.new(0, 3)
+    UICorner_3.Parent = Copy
+
+    UIStroke_4.Parent = Copy
+    UIStroke_4.Color = Color3.fromRGB(87, 92, 121)
+    UIStroke_4.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+    Copy.MouseButton1Click:Connect(function()
+        local lines = {}
+
+        for _, child in ipairs(OutputScrollingFrame:GetChildren()) do
+            if child:IsA("TextLabel") then
+                table.insert(lines, child.Text)
+            end
+        end
+
+        setclipboard(table.concat(lines, "\n"))
+    end)
+
+    updateCanvas()
+    updateEmpty()
+end
