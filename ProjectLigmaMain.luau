@@ -746,7 +746,7 @@ Scroller.ScrollingDirection = Enum.ScrollingDirection.XY
 Scroller.CanvasSize = UDim2.new(0,0,0,255)
 
 local Lines = Instance.new("TextLabel")
-Lines.Parent = Main
+Lines.Parent = Scroller
 Lines.Size = UDim2.new(0,30,0,255)
 Lines.BackgroundColor3 = Color3.fromRGB(200,200,200)
 Lines.TextColor3 = Color3.fromRGB(100,100,100)
@@ -755,12 +755,11 @@ Lines.TextSize = 12
 Lines.TextXAlignment = Enum.TextXAlignment.Center
 Lines.TextYAlignment = Enum.TextYAlignment.Top
 Lines.Text = "1"
-Lines.Visible = false
 
 local ScriptBox = Instance.new("TextBox")
 ScriptBox.Parent = Scroller
 ScriptBox.Position = UDim2.new(0,35,0,0)
-ScriptBox.Size = UDim2.new(1,0,0,255)
+ScriptBox.Size = UDim2.new(1,-35,0,255)
 ScriptBox.BackgroundTransparency = 0
 ScriptBox.BackgroundColor3 = Color3.fromRGB(ScriptBoxBackgroundColor,ScriptBoxBackgroundColor,ScriptBoxBackgroundColor)
 ScriptBox.Text = "print('hello world')"
@@ -1554,9 +1553,9 @@ Button.MouseButton1Click:Connect(function()
 	end
 end)]])
 
-AddFile('GamepassSpoofer', [[loadstring(game:HttpGet("https://gist.githubusercontent.com/infault/49cc129c99962d52b8c3980088e2de3c/raw/5778989c37e85bd576f7ec44fab9b0f53c7bafe8/gistfile1.txt"))()]])
-
 AddFile('KoopKidd', [[-- Note by Squrri: this only works on hd admin games : ^ >\n]]..game:HttpGet('https://rawscripts.net/raw/Universal-Script-k00pgui-v8-F3X-EDITON-52670'))
+
+AddFile('GamepassSpoofer', [[loadstring(game:HttpGet("https://gist.githubusercontent.com/infault/49cc129c99962d52b8c3980088e2de3c/raw/5778989c37e85bd576f7ec44fab9b0f53c7bafe8/gistfile1.txt"))()]])
 
 AddFile('Dex', [[loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()]])
 
@@ -1647,8 +1646,6 @@ AddFile('John Doe', 'require(8973689388).load("'..(player.Name or 'yourusername'
 AddFile('Kasper Trolling', 'require(6414405864).KUTG("'..(player.Name or 'yourusername')..'")')
 AddFile('Krono Hub', 'require(9275293020).load("'..(player.Name or 'yourusername')..'")')
 AddFile('Sonic Hub', 'require(5352721272):Fire("'..(player.Name or 'yourusername')..'")')
-AddFile('ChudGUI', 'require(84472651256445).chud("'..game.Players.LocalPlayer.Name or 'yourusername'..'")')
-
 
 AddFile('Abuse Detection', 'require(8626754476):AD()')
 AddFile('Anti-Kick', 'require(4820862445).load')
